@@ -81,25 +81,4 @@ export default function GeminiTextProcessor({
     }
   };
   
-  return (
-    <Card className="mb-4">
-      <CardContent className="pt-4">
-        <Button 
-          onClick={processText}
-          disabled={isProcessing || !transcriptionText}
-          className="w-full"
-          variant="default"
-        >
-          {isProcessing ? (
-            <>
-              <Spinner className="mr-2 h-4 w-4" />
-              Обработка...
-            </>
-          ) : (
-            "Обработать текст с Gemini"
-          )}
-        </Button>
-      </CardContent>
-    </Card>
-  );
 }
