@@ -4,12 +4,12 @@ import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
-  subsets: ["latin", "cyrillic"],
+  subsets: ["latin", "latin"],
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  subsets: ["latin", "cyrillic"],
+  subsets: ["latin", "latin"],
 });
 
 export const metadata: Metadata = {
