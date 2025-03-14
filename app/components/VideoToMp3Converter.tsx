@@ -10,6 +10,7 @@ export default function VideoToMp3Converter() {
   const [file, setFile] = useState<File | null>(null);
   const [isConverting, setIsConverting] = useState(false);
   const [conversionComplete, setConversionComplete] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -71,29 +72,43 @@ export default function VideoToMp3Converter() {
         <CardTitle>Конвертер видео в MP3</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid w-full items-center gap-4">
-          <div className="flex flex-col space-y-1.5">
-            <label htmlFor="video-file" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-              Выберите видеофайл
-            </label>
-            <input
-              id="video-file"
-              type="file"
-              accept="video/*"
-              onChange={handleFileChange}
-              disabled={isConverting}
-              className="flex h-10 px-3 py-2 border border-input bg-background text-sm rounded-md file:border-0 file:bg-transparent file:text-sm file:font-medium"
-            />
-            {file && (
+        <div
+          className={`border-2 border-dashed rounded-md p-4 text-center transition-colors duration-200 ${
+            isDragging ? 'border-primary bg-primary/10' : 'border-gray-300 hover:bg-gray-50'
+          }`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+              setFile(e.dataTransfer.files[0]);
+            }
+          }}
+        >
+          <input
+            id="video-file"
+            type="file"
+            accept="video/*"
+            onChange={handleFileChange}
+            disabled={isConverting}
+            className="hidden"
+          />
+          <label htmlFor="video-file" className="cursor-pointer">
+            {file ? (
+              <p className="text-sm text-muted-foreground">Выбран файл: {file.name}</p>
+            ) : (
               <p className="text-sm text-muted-foreground">
-                Выбран файл: {file.name}
+                Перетащите видеофайл сюда или кликните для выбора
               </p>
             )}
-          </div>
+          </label>
         </div>
-        
-        <Button 
-          onClick={handleConvert} 
+        <Button
+          onClick={handleConvert}
           disabled={!file || isConverting}
           className="w-full"
         >
@@ -106,9 +121,8 @@ export default function VideoToMp3Converter() {
             "Конвертировать в MP3"
           )}
         </Button>
-        
         {conversionComplete && (
-          <p className="text-sm text-green-600 text-center mt-2">
+          <p className="text-sm text-green-600 text-center mt-2 animate-fade-in">
             Конвертация успешно завершена!
           </p>
         )}

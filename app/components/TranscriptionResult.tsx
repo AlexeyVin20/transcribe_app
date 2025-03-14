@@ -23,8 +23,8 @@ export default function TranscriptionResult({
   onTranscriptionChange
 }: TranscriptionResultProps) {
   const [editableTranscription, setEditableTranscription] = useState(transcription);
+  const [summary, setSummary] = useState(''); // Добавляем состояние для саммари
 
-  // Обновляем локальное состояние при изменении входных данных
   useEffect(() => {
     setEditableTranscription(transcription);
   }, [transcription]);
@@ -36,9 +36,10 @@ export default function TranscriptionResult({
       onTranscriptionChange(newText);
     }
   };
-  
-  const handleProcessedTextChange = (text: string) => {
+
+  const handleProcessedTextChange = (text: string, summary: string) => { // Обновляем сигнатуру
     setEditableTranscription(text);
+    setSummary(summary); // Устанавливаем саммари
     if (onTranscriptionChange) {
       onTranscriptionChange(text);
     }
@@ -52,15 +53,15 @@ export default function TranscriptionResult({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          text: editableTranscription,
+          text: editableTranscription, // Только текст транскрипции
           format,
         }),
       });
-
+  
       if (!response.ok) {
         throw new Error('Ошибка при скачивании файла');
       }
-
+  
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -98,7 +99,6 @@ export default function TranscriptionResult({
     );
   }
 
-  // Если нет транскрипции и не загружается - ничего не показываем
   if (!transcription && !isLoading && !error) {
     return null;
   }
@@ -108,32 +108,33 @@ export default function TranscriptionResult({
       <CardHeader>
         <CardTitle>Результат транскрипции</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {transcriptionData?.words && transcriptionData.words.length > 0 && (
-          <GeminiTextProcessor 
-            transcriptionText={transcription}
-            transcriptionData={transcriptionData}
-            onProcessedTextChange={handleProcessedTextChange}
-          />
-        )}
-        
-        <Textarea 
-          value={editableTranscription} 
-          onChange={handleTranscriptionChange} 
-          rows={15}
-          className="font-mono text-sm"
-          placeholder="Здесь появится текст транскрипции..."
-        />
-      </CardContent>
+      <CardContent className="space-y-4 animate-fade-in">
+  <GeminiTextProcessor
+    transcriptionText={transcription}
+    onProcessedTextChange={handleProcessedTextChange}
+  />
+  <div className="space-y-2">
+    <Textarea
+      value={editableTranscription}
+      onChange={handleTranscriptionChange}
+      rows={15}
+      className="font-mono text-sm"
+      placeholder="Здесь появится текст транскрипции..."
+    />
+    {summary && (
+      <p className="text-red-500 text-sm">{summary}</p>
+    )}
+  </div>
+</CardContent>
       <CardFooter className="flex justify-end space-x-2">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={() => handleDownload('docx')}
         >
           Скачать в DOCX
         </Button>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={() => handleDownload('odt')}
         >
           Скачать в ODT
