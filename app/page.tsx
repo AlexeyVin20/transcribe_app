@@ -10,9 +10,12 @@ export default function Home() {
   const [transcription, setTranscription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [transcriptionData, setTranscriptionData] = useState(null);
+  interface TranscriptionData {
+    text: string;
+  }
+  const [transcriptionData, setTranscriptionData] = useState<TranscriptionData | null>(null);
 
-  const handleTranscriptionResult = (data) => {
+  const handleTranscriptionResult = (data: { text: string } | null) => {
     if (data && typeof data === 'object' && data.text) {
       setTranscription(data.text);
       setTranscriptionData(data);
