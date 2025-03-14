@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Document, Packer, Paragraph } from 'docx';
+import { Document, Packer, Paragraph, TextRun } from 'docx';
 import JSZip from 'jszip';
 
 export async function POST(request: NextRequest) {
@@ -10,21 +10,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Текст не предоставлен' }, { status: 400 });
     }
 
+    // Разбиваем текст на абзацы
+    const paragraphs = text.split(/\n\s*\n/);
+
     if (format === 'docx') {
-      // Создаем DOCX документ
+      // Создаем DOCX документ с правильным форматированием абзацев
       const doc = new Document({
         sections: [{
           properties: {},
-          children: [
-            new Paragraph({ text }),
-          ],
+          children: paragraphs.map(para => 
+            new Paragraph({
+              children: [new TextRun(para.trim())],
+              spacing: {
+                after: 240, // Добавляем отступ после каждого абзаца (в двадцатых долях пункта)
+                line: 360, // Междустрочный интервал
+              }
+            })
+          ),
         }],
       });
 
-      // Упаковываем документ в Buffer
       const buffer = await Packer.toBuffer(doc);
 
-      // Возвращаем документ как ответ
       return new NextResponse(buffer, {
         headers: {
           'Content-Disposition': 'attachment; filename="transcription.docx"',
@@ -32,52 +39,79 @@ export async function POST(request: NextRequest) {
         },
       });
     } else if (format === 'odt') {
-      // Создаем простой ODT файл с помощью JSZip
       const zip = new JSZip();
 
-      // Добавляем mimetype файл
-      zip.file('mimetype', 'application/vnd.oasis.opendocument.text');
+      // Добавляем mimetype файл (должен быть первым и без сжатия)
+      zip.file('mimetype', 'application/vnd.oasis.opendocument.text', { compression: 'STORE' });
 
-      // Добавляем META-INF/manifest.xml
+      // Обновляем manifest.xml
       zip.folder('META-INF')?.file('manifest.xml', `<?xml version="1.0" encoding="UTF-8"?>
 <manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0">
-  <manifest:file-entry manifest:media-type="application/vnd.oasis.opendocument.text" manifest:full-path="/"/>
+  <manifest:file-entry manifest:media-type="application/vnd.oasis.opendocument.text" manifest:version="1.2" manifest:full-path="/"/>
   <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="content.xml"/>
-  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="meta.xml"/>
   <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="styles.xml"/>
+  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="meta.xml"/>
 </manifest:manifest>`);
 
-      // Преобразуем текст, экранируя специальные символы
-      const sanitizedText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      
-      // Добавляем content.xml с текстом
+      // Форматируем абзацы для ODT с двойным переносом
+      const formattedParagraphs = paragraphs
+        .map(para => {
+          const sanitizedText = para.trim()
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;');
+          return `<text:p text:style-name="P1">${sanitizedText}</text:p>\n<text:p text:style-name="P2"></text:p>`;
+        })
+        .join('\n');
+
+      // Обновляем content.xml с правильными пространствами имен и стилями
       zip.file('content.xml', `<?xml version="1.0" encoding="UTF-8"?>
-<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0">
+<office:document-content
+  xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+  xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"
+  xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"
+  xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"
+  office:version="1.2">
+  <office:automatic-styles>
+    <style:style style:name="P1" style:family="paragraph" style:parent-style-name="Standard">
+      <style:paragraph-properties fo:margin-top="0cm" fo:margin-bottom="0.247cm" fo:line-height="150%"/>
+    </style:style>
+    <style:style style:name="P2" style:family="paragraph" style:parent-style-name="Standard">
+      <style:paragraph-properties fo:margin-top="0cm" fo:margin-bottom="0.247cm"/>
+    </style:style>
+  </office:automatic-styles>
   <office:body>
     <office:text>
-      <text:p>${sanitizedText}</text:p>
+      ${formattedParagraphs}
     </office:text>
   </office:body>
 </office:document-content>`);
 
-      // Добавляем мета-информацию
-      zip.file('meta.xml', `<?xml version="1.0" encoding="UTF-8"?>
-<office:document-meta xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:dc="http://purl.org/dc/elements/1.1/">
-  <office:meta>
-    <dc:title>Transcription App</dc:title>
-    <dc:date>${new Date().toISOString()}</dc:date>
-  </office:meta>
-</office:document-meta>`);
-
+      // Обновляем styles.xml с базовыми стилями
       zip.file('styles.xml', `<?xml version="1.0" encoding="UTF-8"?>
-<office:document-styles xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0">
-  <office:styles/>
+<office:document-styles
+  xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
+  xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"
+  xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"
+  xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"
+  office:version="1.2">
+  <office:styles>
+    <style:style style:name="Standard" style:family="paragraph" style:class="text"/>
+  </office:styles>
 </office:document-styles>`);
 
-      // Генерируем ODT файл
-      const odtBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+      // Создаем ODT файл
+      const odtBuffer = await zip.generateAsync({
+        type: 'nodebuffer',
+        mimeType: 'application/vnd.oasis.opendocument.text',
+        compression: 'DEFLATE',
+        compressionOptions: {
+          level: 9
+        }
+      });
 
-      // Возвращаем ODT как ответ
       return new NextResponse(odtBuffer, {
         headers: {
           'Content-Disposition': 'attachment; filename="transcription.odt"',

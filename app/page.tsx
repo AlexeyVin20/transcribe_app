@@ -5,12 +5,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/sonner";
 import TranscriptionForm from '@/app/components/TranscriptionForm';
 import TranscriptionResult from '@/app/components/TranscriptionResult';
-import VideoToMp3Converter from '@/app/components/VideoToMp3Converter';
 
 export default function Home() {
   const [transcription, setTranscription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [transcriptionData, setTranscriptionData] = useState(null);
 
   const handleTranscriptionResult = (data) => {
@@ -48,10 +47,6 @@ export default function Home() {
             error={error}
             onTranscriptionChange={(text) => setTranscription(text)}
           />
-        </TabsContent>
-
-        <TabsContent value="convert">
-          <VideoToMp3Converter />
         </TabsContent>
       </Tabs>
 
