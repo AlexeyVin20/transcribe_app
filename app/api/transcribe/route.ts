@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       diarize: true,
       utterances: true,
       words: needTimestamps,
-      model: model === 'whisper' ? 'whisper' : (model === 'nova-2' ? 'nova-2' : 'nova-3')
+      model: model === 'nova-2' ? 'nova-2' : (model === 'whisper' ? 'whisper' : 'nova-3')
     };
 
     console.log('[INFO] Параметры транскрипции:', options);
