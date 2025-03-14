@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/Spinner";
 import { toast } from "sonner";
+import { Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface GeminiTextProcessorProps {
   transcriptionText: string;
-  onProcessedTextChange: (text: string, summary: string) => void; // Обновляем сигнатуру
+  onProcessedTextChange: (text: string, summary: string) => void;
 }
 
 export default function GeminiTextProcessor({
@@ -24,7 +25,6 @@ export default function GeminiTextProcessor({
     }
 
     setIsProcessing(true);
-
     try {
       const response = await fetch('/api/gemini', {
         method: 'POST',
@@ -43,14 +43,14 @@ export default function GeminiTextProcessor({
 
       const data = await response.json();
       console.log("Полученные данные от API:", data);
-
+      
       if (!data.text || typeof data.text !== 'string' || !data.summary || typeof data.summary !== 'string') {
         throw new Error('Недопустимый формат данных из API');
       }
 
       const processedText = data.text;
       const summary = data.summary;
-      onProcessedTextChange(processedText, summary); // Передаем оба значения
+      onProcessedTextChange(processedText, summary);
       toast.success("Текст успешно обработан");
     } catch (error) {
       console.error('Ошибка при обработке текста:', error);
@@ -61,19 +61,25 @@ export default function GeminiTextProcessor({
   };
 
   return (
-    <Card className="w-full">
-      <CardContent className="p-4">
-        <Button
-          onClick={processText}
-          disabled={isProcessing}
-          className="w-full"
-        >
-          {isProcessing ? (
-            <Spinner className="mr-2 h-4 w-4" />
-          ) : null}
-          Обработать текст с помощью ИИ
-        </Button>
-      </CardContent>
-    </Card>
+    <motion.div
+      whileHover={{ scale: 1.02 }}
+      transition={{ type: "spring", stiffness: 400, damping: 10 }}
+      className="w-full sm:w-auto"
+    >
+      <Button 
+        onClick={processText} 
+        disabled={isProcessing || !transcriptionText} 
+        variant="default"
+        className="relative overflow-hidden group w-full"
+      >
+        {isProcessing ? (
+          <Spinner className="mr-2" size="sm" />
+        ) : (
+          <Sparkles className="mr-2 h-4 w-4 text-primary-foreground" />
+        )}
+        <span>Обработать текст с помощью ИИ</span>
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-primary/0 via-primary-foreground/20 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 -translate-x-full group-hover:translate-x-full ease-in-out"></div>
+      </Button>
+    </motion.div>
   );
 }
