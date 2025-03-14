@@ -10,20 +10,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Текст не предоставлен' }, { status: 400 });
     }
 
-    // Разбиваем текст на абзацы
-    const paragraphs = text.split(/\n\s*\n/);
+    // Разбиваем текст на абзацы и добавляем типизацию
+    const paragraphs: string[] = text.split(/\n\s*\n/);
 
     if (format === 'docx') {
-      // Создаем DOCX документ с правильным форматированием абзацев
       const doc = new Document({
         sections: [{
           properties: {},
-          children: paragraphs.map(para => 
+          children: paragraphs.map((para: string) => 
             new Paragraph({
               children: [new TextRun(para.trim())],
               spacing: {
-                after: 240, // Добавляем отступ после каждого абзаца (в двадцатых долях пункта)
-                line: 360, // Междустрочный интервал
+                after: 240,
+                line: 360,
               }
             })
           ),
@@ -55,7 +54,7 @@ export async function POST(request: NextRequest) {
 
       // Форматируем абзацы для ODT с двойным переносом
       const formattedParagraphs = paragraphs
-        .map(para => {
+        .map((para: string) => {
           const sanitizedText = para.trim()
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
