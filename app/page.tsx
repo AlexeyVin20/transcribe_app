@@ -8,12 +8,11 @@ import TranscriptionResult from '@/app/components/TranscriptionResult';
 import VideoToMp3Converter from '@/app/components/VideoToMp3Converter';
 
 export default function Home() {
-  // Основные состояния
   const [transcription, setTranscription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [transcriptionData, setTranscriptionData] = useState(null);
-  
+
   const handleTranscriptionResult = (data) => {
     if (data && typeof data === 'object' && data.text) {
       setTranscription(data.text);
@@ -22,27 +21,27 @@ export default function Home() {
       setError('Получены некорректные данные транскрипции');
     }
   };
-  
+
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
-      <h1 className="text-3xl font-bold text-center mb-8">
-        Транскрипция и обработка аудио/видео
-      </h1>
-      
+      <h1 className="text-3xl font-bold text-center mb-8 text-primary animate-fade-in">
+  Транскрипция и обработка аудио/видео
+</h1>
+
       <Tabs defaultValue="transcription" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-8">
-          <TabsTrigger value="transcription">Транскрипция</TabsTrigger>
-          <TabsTrigger value="convert">Конвертация видео в MP3</TabsTrigger>
-        </TabsList>
-        
+      <TabsList className="grid w-full grid-cols-1 mb-8 bg-gray-100 p-1 rounded-lg">
+  <TabsTrigger value="transcription" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+    Транскрипция
+  </TabsTrigger>
+</TabsList>
+
         <TabsContent value="transcription" className="space-y-6">
-          <TranscriptionForm 
-            onTranscriptionComplete={handleTranscriptionResult} 
-            setIsLoading={setIsLoading} 
-            setError={setError} 
+          <TranscriptionForm
+            onTranscriptionComplete={handleTranscriptionResult}
+            setIsLoading={setIsLoading}
+            setError={setError}
           />
-          
-          <TranscriptionResult 
+          <TranscriptionResult
             transcription={transcription}
             transcriptionData={transcriptionData}
             isLoading={isLoading}
@@ -50,12 +49,12 @@ export default function Home() {
             onTranscriptionChange={(text) => setTranscription(text)}
           />
         </TabsContent>
-        
+
         <TabsContent value="convert">
           <VideoToMp3Converter />
         </TabsContent>
       </Tabs>
-      
+
       <Toaster />
     </div>
   );
