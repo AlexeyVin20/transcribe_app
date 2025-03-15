@@ -41,7 +41,6 @@ export default function TranscriptionForm({
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       setFile(e.dataTransfer.files[0]);
     }
@@ -63,98 +62,113 @@ export default function TranscriptionForm({
     setError(null);
 
     try {
+      // Установка таймаута для длительных запросов
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 минут таймаут
+
       const response = await fetch('/api/transcribe', {
         method: 'POST',
         body: formData,
+        signal: controller.signal
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Ошибка при транскрипции');
+      clearTimeout(timeoutId);
+
+      // Получаем текст ответа вместо прямого вызова response.json()
+      const responseText = await response.text();
+      
+      // Защищенный парсинг JSON
+      let data;
+      try {
+        // Проверяем, что ответ не пустой
+        if (responseText.trim() === '') {
+          throw new Error('Получен пустой ответ от сервера');
+        }
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('Ошибка парсинга JSON:', parseError);
+        console.log('Полученный ответ:', responseText);
+        throw new Error('Получен некорректный формат ответа от сервера');
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Ошибка при транскрипции');
+      }
+
       console.log('Получены данные транскрипции:', data);
       toast.success("Транскрипция успешно завершена");
       onTranscriptionComplete(data);
     } catch (error) {
       console.error('Ошибка транскрипции:', error);
-      setError(error instanceof Error ? error.message : 'Произошла ошибка при транскрипции');
-      toast.error(error instanceof Error ? error.message : 'Произошла ошибка при транскрипции');
+      // Проверяем случай обрыва соединения
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        setError('Превышено время ожидания. Возможно, файл слишком большой или сервер перегружен.');
+        toast.error('Превышено время ожидания. Попробуйте файл меньшего размера.');
+      } else {
+        setError(error instanceof Error ? error.message : 'Произошла ошибка при транскрипции');
+        toast.error(error instanceof Error ? error.message : 'Произошла ошибка при транскрипции');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Card className="overflow-hidden shadow-md hover:shadow-lg transition-all duration-300">
-      <CardHeader className="pb-4">
-        <CardTitle className="text-2xl flex items-center gap-2">
-          <FileAudio className="h-6 w-6 text-primary" />
-          Загрузка аудио или видео
-        </CardTitle>
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>Загрузка аудио или видео</CardTitle>
         <CardDescription>
           Загрузите аудио или видео файл для автоматической транскрипции
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div 
-            className={`border-2 border-dashed rounded-lg p-8 transition-all duration-200 ease-in-out text-center ${
-              dragActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div
+            className={`border-2 border-dashed rounded-lg p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer ${
+              dragActive ? 'border-primary bg-primary/5' : 'border-gray-300'
             }`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
             onDragOver={handleDrag}
             onDrop={handleDrop}
+            onClick={() => document.getElementById('file-upload')?.click()}
           >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.3 }}
-              className="flex flex-col items-center justify-center gap-4"
-            >
-              <div className="rounded-full bg-primary/10 p-4">
-                <Upload className="h-10 w-10 text-primary" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="font-medium text-lg">Выберите файл или перетащите его сюда</h3>
-                <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                  Поддерживаются аудио и видео форматы (MP3, MP4, WAV, FLAC, и другие)
-                </p>
-              </div>
-              <Button type="button" variant="outline" onClick={() => document.getElementById('file-upload')?.click()}>
-                Выбрать файл
-              </Button>
-              <input
-                id="file-upload"
-                type="file"
-                accept="audio/*,video/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </motion.div>
+            <input
+              id="file-upload"
+              name="file"
+              type="file"
+              className="hidden"
+              accept=".mp3,.wav,.mp4,.flac,.ogg,.webm,audio/*,video/*"
+              onChange={handleFileChange}
+            />
+            <div className="flex flex-col items-center justify-center">
+              <FileAudio className="w-12 h-12 text-gray-400 mb-2" />
+              <p className="text-lg font-medium">
+                Выберите файл или перетащите его сюда
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                Поддерживаются аудио и видео форматы (MP3, MP4, WAV, FLAC, и другие)
+              </p>
+            </div>
           </div>
 
           {file && (
-            <motion.div
+            <motion.div 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-secondary/50 rounded-lg p-4 flex items-center justify-between"
+              className="flex items-center justify-between p-3 bg-primary/5 rounded-lg"
             >
-              <div className="flex items-center gap-3">
-                <FileAudio className="h-5 w-5 text-primary" />
-                <div>
+              <div className="flex items-center">
+                <FileAudio className="w-5 h-5 mr-2 text-primary" />
+                <div className="text-sm">
                   <p className="font-medium">{file.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {(file.size / 1024 / 1024).toFixed(2)} МБ
-                  </p>
+                  <p className="text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} МБ</p>
                 </div>
               </div>
               <Button 
-                variant="destructive" 
+                type="button" 
+                variant="ghost" 
                 size="sm" 
-                className="h-8" 
                 onClick={() => setFile(null)}
               >
                 Удалить
@@ -164,10 +178,10 @@ export default function TranscriptionForm({
 
           <Button 
             type="submit" 
-            className="w-full transition-all duration-300 hover:shadow-md hover:scale-[1.02]"
+            className="w-full" 
             disabled={!file}
           >
-            <FileAudio className="mr-2 h-4 w-4" />
+            <Upload className="w-4 h-4 mr-2" />
             Транскрибировать
           </Button>
         </form>
