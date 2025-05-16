@@ -4,19 +4,21 @@ import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
-import { FileAudio, Upload, AlertCircle } from "lucide-react";
+import { FileAudio, Upload, AlertCircle, X, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface TranscriptionFormProps {
   onTranscriptionComplete: (data: any) => void;
   setIsLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  onFileChange?: (file: File | null) => void;
 }
 
 export default function TranscriptionForm({
   onTranscriptionComplete,
   setIsLoading,
-  setError
+  setError,
+  onFileChange
 }: TranscriptionFormProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -24,6 +26,9 @@ export default function TranscriptionForm({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setFile(e.target.files[0]);
+      if (onFileChange) {
+        onFileChange(e.target.files[0]);
+      }
     }
   };
 
@@ -43,6 +48,9 @@ export default function TranscriptionForm({
     setDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       setFile(e.dataTransfer.files[0]);
+      if (onFileChange) {
+        onFileChange(e.dataTransfer.files[0]);
+      }
     }
   };
 
@@ -55,8 +63,8 @@ export default function TranscriptionForm({
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('model', 'nova-2');
-    formData.append('timestamps', 'false');
+    formData.append('model', 'nova-3');
+    formData.append('timestamps', 'true');
 
     setIsLoading(true);
     setError(null);
@@ -113,10 +121,58 @@ export default function TranscriptionForm({
     }
   };
 
+  // Компактный режим отображения при наличии файла
+  if (file) {
+    return (
+      <Card className="w-full border">
+        <CardContent className="py-3">
+          <form onSubmit={handleSubmit}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center mr-2 overflow-hidden">
+                <FileAudio className="w-5 h-5 mr-2 text-primary flex-shrink-0" />
+                <div className="text-sm overflow-hidden">
+                  <p className="font-medium text-foreground truncate" title={file.name}>{file.name}</p>
+                  <p className="text-muted-foreground text-xs">{(file.size / 1024 / 1024).toFixed(2)} МБ</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Button 
+                  type="submit" 
+                  size="sm"
+                >
+                  <Upload className="w-3.5 h-3.5 mr-1" />
+                  Транскрибировать
+                </Button>
+                
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => {
+                    setFile(null);
+                    if (onFileChange) {
+                      onFileChange(null);
+                    }
+                  }}
+                  className="h-8 w-8"
+                  title="Удалить файл"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Полный режим отображения при отсутствии файла
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Загрузка аудио или видео</CardTitle>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xl">Загрузка аудио или видео</CardTitle>
         <CardDescription>
           Загрузите аудио или видео файл для автоматической транскрипции
         </CardDescription>
@@ -124,7 +180,7 @@ export default function TranscriptionForm({
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div
-            className={`border-2 border-dashed rounded-lg p-6 text-center hover:bg-gray-50 transition-colors cursor-pointer ${
+            className={`border-2 border-dashed rounded-lg p-6 text-center hover:bg-secondary/20 transition-colors cursor-pointer ${
               dragActive ? 'border-primary bg-primary/5' : 'border-gray-300'
             }`}
             onDragEnter={handleDrag}
@@ -142,39 +198,15 @@ export default function TranscriptionForm({
               onChange={handleFileChange}
             />
             <div className="flex flex-col items-center justify-center">
-              <FileAudio className="w-12 h-12 text-gray-400 mb-2" />
+              <FileAudio className="w-12 h-12 text-muted-foreground mb-2" />
               <p className="text-lg font-medium">
                 Выберите файл или перетащите его сюда
               </p>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 Поддерживаются аудио и видео форматы (MP3, MP4, WAV, FLAC, и другие)
               </p>
             </div>
           </div>
-
-          {file && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center justify-between p-3 bg-primary/5 rounded-lg"
-            >
-              <div className="flex items-center">
-                <FileAudio className="w-5 h-5 mr-2 text-primary" />
-                <div className="text-sm">
-                  <p className="font-medium">{file.name}</p>
-                  <p className="text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} МБ</p>
-                </div>
-              </div>
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setFile(null)}
-              >
-                Удалить
-              </Button>
-            </motion.div>
-          )}
 
           <Button 
             type="submit" 
