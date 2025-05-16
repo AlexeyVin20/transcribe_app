@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { toast } from "sonner";
 import { FileAudio, Upload, AlertCircle, X, Plus } from "lucide-react";
 import { motion } from "framer-motion";
+import { Spinner } from "@/components/ui/Spinner";
 
 interface TranscriptionFormProps {
   onTranscriptionComplete: (data: any) => void;
@@ -22,6 +23,7 @@ export default function TranscriptionForm({
 }: TranscriptionFormProps) {
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -68,6 +70,7 @@ export default function TranscriptionForm({
 
     setIsLoading(true);
     setError(null);
+    setIsProcessing(true);
 
     try {
       // Установка таймаута для длительных запросов
@@ -118,6 +121,7 @@ export default function TranscriptionForm({
       }
     } finally {
       setIsLoading(false);
+      setIsProcessing(false);
     }
   };
 
@@ -140,9 +144,19 @@ export default function TranscriptionForm({
                 <Button 
                   type="submit" 
                   size="sm"
+                  disabled={isProcessing}
                 >
-                  <Upload className="w-3.5 h-3.5 mr-1" />
-                  Транскрибировать
+                  {isProcessing ? (
+                    <>
+                      <Spinner className="w-3.5 h-3.5 mr-1" size="sm" />
+                      Обработка...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3.5 h-3.5 mr-1" />
+                      Транскрибировать
+                    </>
+                  )}
                 </Button>
                 
                 <Button 
@@ -157,6 +171,7 @@ export default function TranscriptionForm({
                   }}
                   className="h-8 w-8"
                   title="Удалить файл"
+                  disabled={isProcessing}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -211,10 +226,19 @@ export default function TranscriptionForm({
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={!file}
+            disabled={!file || isProcessing}
           >
-            <Upload className="w-4 h-4 mr-2" />
-            Транскрибировать
+            {isProcessing ? (
+              <>
+                <Spinner className="w-4 h-4 mr-2" size="sm" />
+                Обработка...
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4 mr-2" />
+                Транскрибировать
+              </>
+            )}
           </Button>
         </form>
       </CardContent>

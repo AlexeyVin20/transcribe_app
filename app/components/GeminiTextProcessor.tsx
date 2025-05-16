@@ -26,13 +26,76 @@ export default function GeminiTextProcessor({
 
     setIsProcessing(true);
     try {
+      // Подготавливаем текст с сохранением метаданных
+      const paragraphs = transcriptionText.split('\n\n');
+      console.log(`Получено ${paragraphs.length} параграфов для обработки`);
+      
+      // Проверяем первый параграф на наличие таймкодов для отладки
+      if (paragraphs.length > 0) {
+        const firstParagraph = paragraphs[0];
+        console.log("Первый параграф:", firstParagraph.substring(0, 100));
+        const hasTimeCode = /^\s*\[(\d{2}:\d{2})(?:\s*-\s*|\s+)(\d{2}:\d{2})\]/.test(firstParagraph);
+        const hasSpeaker = /\[Говорящий\s+(\d+)\]\s*:/.test(firstParagraph);
+        console.log(`Первый параграф содержит таймкод: ${hasTimeCode}, содержит говорящего: ${hasSpeaker}`);
+      }
+      
+      const preparedParagraphs = paragraphs.map((paragraph, index) => {
+        // Проверяем наличие метаданных о времени и говорящем
+        const metadataPrefix = [];
+        
+        // Проверяем метаданные о времени (более гибкое регулярное выражение)
+        const timeMatch = paragraph.match(/^\s*\[(\d{2}:\d{2})(?:\s*-\s*|\s+)(\d{2}:\d{2})\]/);
+        if (timeMatch) {
+          // Нормализуем формат таймкода
+          metadataPrefix.push(`[${timeMatch[1]} - ${timeMatch[2]}]`);
+          console.log(`Параграф #${index+1}: обнаружен таймкод ${timeMatch[1]} - ${timeMatch[2]}`);
+        }
+        
+        // Проверяем метаданные о говорящем (более гибкая регулярка)
+        const speakerMatch = paragraph.match(/\[Говорящий\s+(\d+)\]\s*:/);
+        if (speakerMatch) {
+          metadataPrefix.push(`[Говорящий ${speakerMatch[1]}]:`);
+          console.log(`Параграф #${index+1}: обнаружен говорящий ${speakerMatch[1]}`);
+        }
+        
+        // Возвращаем параграф с метаданными (если они были)
+        if (metadataPrefix.length > 0) {
+          // Очищаем текст от метаданных для обработки
+          let cleanText = paragraph;
+          
+          // Для более надежного удаления метаданных
+          if (timeMatch) {
+            cleanText = cleanText.replace(timeMatch[0], '').trim();
+          }
+          
+          if (speakerMatch) {
+            cleanText = cleanText.replace(speakerMatch[0], '').trim();
+          }
+          
+          const result = `${metadataPrefix.join(' ')} ${cleanText}`;
+          if (index < 2) {
+            console.log(`Параграф #${index+1} после обработки: ${result.substring(0, 100)}`);
+          }
+          return result;
+        }
+        
+        return paragraph;
+      });
+      
+      // Объединяем параграфы обратно в текст
+      const textToProcess = preparedParagraphs.join('\n\n');
+      
+      // Логируем текст для отладки
+      console.log("Исходный текст с метаданными:", transcriptionText.substring(0, 300) + "...");
+      console.log("Текст для обработки ИИ:", textToProcess.substring(0, 300) + "...");
+
       const response = await fetch('/api/gemini', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          text: transcriptionText,
+          text: textToProcess,
         }),
       });
 
@@ -50,6 +113,7 @@ export default function GeminiTextProcessor({
 
       const processedText = data.text;
       const summary = data.summary;
+      console.log("Обновление текста из Gemini:", processedText.substring(0, 300) + "...");
       onProcessedTextChange(processedText, summary);
       toast.success("Текст успешно обработан");
     } catch (error) {

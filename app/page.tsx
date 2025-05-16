@@ -29,6 +29,11 @@ export default function Home() {
     }
   };
 
+  const handleTranscriptionChange = (newText: string) => {
+    console.log("Обновление транскрипции в родительском компоненте:", newText);
+    setTranscription(newText);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
       <motion.div 
@@ -92,7 +97,7 @@ export default function Home() {
                       isLoading={isLoading}
                       error={error}
                       originalAudioFile={audioFile}
-                      onTranscriptionChange={(newText) => setTranscription(newText)}
+                      onTranscriptionChange={handleTranscriptionChange}
                     />
                   </div>
                 </div>

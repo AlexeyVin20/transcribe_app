@@ -16,13 +16,32 @@ export async function POST(request: NextRequest) {
     if (format === 'docx') {
       const doc = new Document({
         sections: [{
-          properties: {},
+          properties: {
+            page: {
+              margin: {
+                top: 567, // 1 см = примерно 567 твипов
+                right: 567, // 1 см правое поле
+                bottom: 567,
+                left: 567
+              }
+            }
+          },
           children: paragraphs.map((para: string) => 
             new Paragraph({
-              children: [new TextRun(para.trim())],
+              children: [
+                new TextRun({
+                  text: para.trim(),
+                  font: "Times New Roman",
+                  size: 28 // 14pt = 28 half-points
+                })
+              ],
               spacing: {
                 after: 240,
                 line: 360,
+              },
+              alignment: "both", // "both" соответствует выравниванию по ширине в docx
+              indent: {
+                firstLine: 567 // 1 см = примерно 567 твипов (1 см = 28.35 пунктов, 1 пункт = 20 твипов)
               }
             })
           ),
@@ -65,7 +84,7 @@ export async function POST(request: NextRequest) {
         })
         .join('\n');
 
-      // Обновляем content.xml с правильными пространствами имен и стилями
+      // Обновляем content.xml с правильными пространствами и стилями
       zip.file('content.xml', `<?xml version="1.0" encoding="UTF-8"?>
 <office:document-content
   xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"
@@ -75,11 +94,27 @@ export async function POST(request: NextRequest) {
   office:version="1.2">
   <office:automatic-styles>
     <style:style style:name="P1" style:family="paragraph" style:parent-style-name="Standard">
-      <style:paragraph-properties fo:margin-top="0cm" fo:margin-bottom="0.247cm" fo:line-height="150%"/>
+      <style:paragraph-properties 
+        fo:margin-top="0cm" 
+        fo:margin-bottom="0.247cm" 
+        fo:line-height="150%"
+        fo:text-align="justify"
+        fo:text-indent="1cm"/>
+      <style:text-properties 
+        style:font-name="Times New Roman"
+        fo:font-size="14pt"/>
     </style:style>
     <style:style style:name="P2" style:family="paragraph" style:parent-style-name="Standard">
       <style:paragraph-properties fo:margin-top="0cm" fo:margin-bottom="0.247cm"/>
     </style:style>
+    <style:page-layout style:name="pm1">
+      <style:page-layout-properties 
+        fo:margin-top="1cm" 
+        fo:margin-bottom="1cm" 
+        fo:margin-left="1cm" 
+        fo:margin-right="1cm" 
+        style:print-orientation="portrait" />
+    </style:page-layout>
   </office:automatic-styles>
   <office:body>
     <office:text>
@@ -95,10 +130,19 @@ export async function POST(request: NextRequest) {
   xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"
   xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"
   xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"
+  xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0"
   office:version="1.2">
   <office:styles>
-    <style:style style:name="Standard" style:family="paragraph" style:class="text"/>
+    <style:style style:name="Standard" style:family="paragraph" style:class="text">
+      <style:text-properties style:font-name="Times New Roman" fo:font-size="14pt"/>
+    </style:style>
   </office:styles>
+  <office:master-styles>
+    <style:master-page style:name="Standard" style:page-layout-name="pm1"/>
+  </office:master-styles>
+  <office:font-face-decls>
+    <style:font-face style:name="Times New Roman" svg:font-family="'Times New Roman'" style:font-family-generic="roman"/>
+  </office:font-face-decls>
 </office:document-styles>`);
 
       // Создаем ODT файл

@@ -10,6 +10,7 @@ import { FileDown, FileText, Copy, Check, AlertCircle, Play, Pause } from "lucid
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { motion } from "framer-motion"
 import { Slider } from "@/app/components/ui/slider"
+import TranscriptionEditor, { TranscriptionEditorRef } from "./TranscriptionEditor"
 
 // Add keyframes for the pulse animation
 const pulseAnimation = `
@@ -37,6 +38,15 @@ interface TranscriptionParagraph {
   num_words: number
   start: number
   end: number
+}
+
+interface ParagraphMapping {
+  id: string;
+  text: string;
+  start: number | null;
+  end: number | null;
+  speaker: number;
+  originalIndex?: number;
 }
 
 interface TranscriptionResultProps {
@@ -67,46 +77,75 @@ export default function TranscriptionResult({
   const [autoScroll, setAutoScroll] = useState(true)
   const [isSliderDragging, setIsSliderDragging] = useState(false)
   const [formattedTranscription, setFormattedTranscription] = useState<string>("")
+  const [hasBeenEdited, setHasBeenEdited] = useState(false)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const wordsRef = useRef<TranscriptionWord[]>([])
   const paragraphsRef = useRef<TranscriptionParagraph[]>([])
   const activeWordRef = useRef<HTMLSpanElement | null>(null)
 
+  const prevTranscriptionRef = useRef<string | null>(null);
+  const isFirstRender = useRef(true);
+
+  // Добавляем ref для доступа к методам TranscriptionEditor
+  const transcriptionEditorRef = useRef<TranscriptionEditorRef>(null);
+
+  // Функция для генерации уникального ID
+  const generateId = () => {
+    return Math.random().toString(36).substring(2, 15);
+  };
+
+  // Модифицируем основной useEffect для использования новой функции
   useEffect(() => {
-    setEditableTranscription(transcription)
+    // Только при первом рендере или при явной смене файла (transcription)
+    if (isFirstRender.current || prevTranscriptionRef.current !== transcription) {
+      setEditableTranscription(transcription);
+      isFirstRender.current = false;
+      prevTranscriptionRef.current = transcription;
+      // Сбрасываем флаг редактирования при смене файла
+      setHasBeenEdited(false);
+    }
 
     // Извлекаем слова из данных транскрипции если они есть
     if (transcriptionData?.results?.channels?.[0]?.alternatives?.[0]?.words && 
         Array.isArray(transcriptionData.results.channels[0].alternatives[0].words)) {
-      wordsRef.current = transcriptionData.results.channels[0].alternatives[0].words
+      wordsRef.current = transcriptionData.results.channels[0].alternatives[0].words;
     } else if (transcriptionData?.words && Array.isArray(transcriptionData.words)) {
-      wordsRef.current = transcriptionData.words
+      wordsRef.current = transcriptionData.words;
     }
 
     // Извлекаем структуру параграфов если она есть
     if (transcriptionData?.results?.channels?.[0]?.alternatives?.[0]?.paragraphs && 
         Array.isArray(transcriptionData.results.channels[0].alternatives[0].paragraphs)) {
-      paragraphsRef.current = transcriptionData.results.channels[0].alternatives[0].paragraphs
+      paragraphsRef.current = transcriptionData.results.channels[0].alternatives[0].paragraphs;
     } else if (transcriptionData?.paragraphs && Array.isArray(transcriptionData.paragraphs)) {
-      paragraphsRef.current = transcriptionData.paragraphs
+      paragraphsRef.current = transcriptionData.paragraphs;
     }
 
     // Устанавливаем длительность из метаданных если доступна
     if (transcriptionData?.metadata?.duration) {
-      setDuration(transcriptionData.metadata.duration)
+      setDuration(transcriptionData.metadata.duration);
     }
     
-    // Форматируем транскрипцию с учетом параграфов
+    // Форматируем транскрипцию с учетом параграфов (для интерактивной вкладки)
     formatTranscriptionWithParagraphs();
 
     // Очищаем URL, если он был создан ранее
     return () => {
       if (audioUrl) {
-        URL.revokeObjectURL(audioUrl)
+        URL.revokeObjectURL(audioUrl);
       }
+    };
+  }, [transcription, transcriptionData]);
+
+  // Добавляем новый useEffect для синхронизации форматированной транскрипции 
+  // при изменении редактируемого текста
+  useEffect(() => {
+    if (hasBeenEdited && editableTranscription) {
+      // Если текст был изменен пользователем, обновляем форматированную транскрипцию
+      setFormattedTranscription(editableTranscription);
     }
-  }, [transcription, transcriptionData])
+  }, [editableTranscription, hasBeenEdited]);
 
   // Обрабатываем файл для воспроизведения
   useEffect(() => {
@@ -198,6 +237,42 @@ export default function TranscriptionResult({
         formatted += "\n\n";
       }
       
+      // Если это начало параграфа, добавляем информацию о времени
+      if (isParagraphStart) {
+        // Получаем данные о параграфе, если они есть
+        if (paragraphsRef.current && paragraphsRef.current.length > 0) {
+          const paragraphInfo = paragraphsRef.current.find(p => 
+            word.start >= p.start && word.start <= p.end
+          );
+          
+          if (paragraphInfo) {
+            formatted += `[${formatTime(paragraphInfo.start)} - ${formatTime(paragraphInfo.end)}] `;
+          } else if (index + 1 < wordsRef.current.length) {
+            // Если не нашли точную информацию о параграфе, используем время первого и последнего слова
+            // Находим конец этого параграфа
+            let endIndex = index;
+            for (let i = index + 1; i < wordsRef.current.length; i++) {
+              if (isStartOfParagraph(i)) {
+                break;
+              }
+              endIndex = i;
+            }
+            formatted += `[${formatTime(word.start)} - ${formatTime(wordsRef.current[endIndex].end)}] `;
+          }
+        } else if (index + 1 < wordsRef.current.length) {
+          // Если нет информации о параграфах, используем доступные данные о времени слов
+          // Находим конец этого параграфа
+          let endIndex = index;
+          for (let i = index + 1; i < wordsRef.current.length; i++) {
+            if (isStartOfParagraph(i)) {
+              break;
+            }
+            endIndex = i;
+          }
+          formatted += `[${formatTime(word.start)} - ${formatTime(wordsRef.current[endIndex].end)}] `;
+        }
+      }
+      
       // Если изменился говорящий, добавляем метку говорящего
       if (isSpeakerChange || (isParagraphStart && word.speaker >= 0 && word.speaker !== currentSpeaker)) {
         formatted += `[Говорящий ${word.speaker + 1}]: `;
@@ -218,21 +293,15 @@ export default function TranscriptionResult({
       currentParagraphIndex = paragraphIndex;
     });
     
+    console.log("Форматированная транскрипция с таймкодами:", formatted.substring(0, 300) + "...");
     setFormattedTranscription(formatted);
-    // Если текст транскрипции был пустым или не содержал слов, обновляем его
-    if (!editableTranscription || editableTranscription.trim() === transcription.trim()) {
-      setEditableTranscription(formatted);
-      if (onTranscriptionChange) {
-        onTranscriptionChange(formatted);
-      }
-    }
   };
 
   // Разбиваем форматированный текст на параграфы с метаданными
   const getParagraphsWithMetadata = () => {
     if (!paragraphsRef.current || paragraphsRef.current.length === 0) {
       // Если нет метаданных о параграфах, просто разбиваем по переносам строки
-      return editableTranscription.split('\n\n').map((text) => ({
+      return formattedTranscription.split('\n\n').map((text) => ({
         text,
         start: 0,
         end: 0,
@@ -307,83 +376,70 @@ export default function TranscriptionResult({
     });
   };
 
-  const handleTranscriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newText = e.target.value
-    setEditableTranscription(newText)
-    if (onTranscriptionChange) {
-      onTranscriptionChange(newText)
-    }
-  }
-
+  // Модифицируем функцию handleProcessedTextChange для синхронизации между вкладками
   const handleProcessedTextChange = (text: string, summary: string) => {
-    setEditableTranscription(text)
-    setSummary(summary)
-    if (onTranscriptionChange) {
-      onTranscriptionChange(text)
+    setEditableTranscription(text);
+    setSummary(summary);
+    
+    // Обновляем форматированную транскрипцию 
+    setFormattedTranscription(text);
+    
+    // Обновляем редактор с помощью разбиения текста на параграфы
+    if (transcriptionEditorRef.current) {
+      transcriptionEditorRef.current.updateFromFormattedText(text);
     }
-  }
+    
+    if (onTranscriptionChange) {
+      onTranscriptionChange(text);
+    }
+    
+    setHasBeenEdited(true);
+  };
 
   const handleCopyToClipboard = () => {
-    navigator.clipboard.writeText(editableTranscription)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    // Сначала сохраняем все изменения в редакторе, если он доступен
+    if (transcriptionEditorRef.current) {
+      transcriptionEditorRef.current.saveChanges();
+    }
+    
+    // Получаем актуальные данные из TranscriptionEditor, если он доступен
+    let textToCopy = editableTranscription;
+    
+    if (transcriptionEditorRef.current) {
+      const editorData = transcriptionEditorRef.current.getExportData();
+      textToCopy = editorData.text;
+    }
+    
+    navigator.clipboard.writeText(textToCopy);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   const handleDownload = async (format: "docx" | "odt") => {
     try {
-      // Формируем расширенную версию для экспорта с метаданными параграфов
-      let exportText = "";
-      
-      if (paragraphsRef.current && paragraphsRef.current.length > 0) {
-        // Если есть структура параграфов, используем ее для форматирования
-        paragraphsRef.current.forEach((paragraph, pIndex) => {
-          // Добавляем метаданные параграфа
-          exportText += `[Параграф ${pIndex + 1}] [${formatTime(paragraph.start)} - ${formatTime(paragraph.end)}]\n`;
-          
-          // Находим слова, относящиеся к этому параграфу
-          const paragraphWords = wordsRef.current.filter(
-            word => word.start >= paragraph.start && word.end <= paragraph.end
-          );
-          
-          // Группируем слова по говорящим
-          const speakerGroups: {[key: number]: TranscriptionWord[]} = {};
-          paragraphWords.forEach(word => {
-            if (!speakerGroups[word.speaker]) {
-              speakerGroups[word.speaker] = [];
-            }
-            speakerGroups[word.speaker].push(word);
-          });
-          
-          // Добавляем текст для каждого говорящего
-          Object.entries(speakerGroups).forEach(([speaker, words]) => {
-            const speakerNumber = parseInt(speaker) + 1;
-            exportText += `[Говорящий ${speakerNumber}]: `;
-            
-            // Собираем текст от говорящего
-            let speakerText = "";
-            words.forEach((word, wIndex) => {
-              speakerText += word.punctuated_word;
-              
-              // Добавляем пробел между словами, если нужно
-              const nextWord = wIndex < words.length - 1 ? words[wIndex + 1].punctuated_word : "";
-              const needsSpace = ![",", ".", "!", "?", ":", ";", ")", "]"].includes(nextWord.charAt(0));
-              
-              if (needsSpace && wIndex < words.length - 1) {
-                speakerText += " ";
-              }
-            });
-            
-            exportText += speakerText + "\n";
-          });
-          
-          // Добавляем разделитель между параграфами
-          exportText += "\n";
-        });
-      } else {
-        // Если нет структуры параграфов, используем форматированную транскрипцию
-        exportText = formattedTranscription || editableTranscription;
+      // Сначала сохраняем все изменения в редакторе, если он доступен
+      if (transcriptionEditorRef.current) {
+        transcriptionEditorRef.current.saveChanges();
       }
       
+      let exportText = "";
+      
+      // Получаем актуальные данные из TranscriptionEditor, если он доступен
+      if (transcriptionEditorRef.current) {
+        const editorData = transcriptionEditorRef.current.getExportData();
+        
+        // Используем параграфы из редактора для экспорта
+        editorData.paragraphs.forEach((paragraph) => {
+          if (paragraph.start !== null && paragraph.end !== null) {
+            exportText += `[${formatTime(paragraph.start)} - ${formatTime(paragraph.end)}] `;
+          }
+          if (paragraph.speaker >= 0) {
+            exportText += `[Говорящий ${paragraph.speaker + 1}]: `;
+          }
+          exportText += paragraph.text + '\n\n';
+        });
+      }
+
       const response = await fetch("/api/download", {
         method: "POST",
         headers: {
@@ -394,11 +450,9 @@ export default function TranscriptionResult({
           format,
         }),
       })
-
       if (!response.ok) {
         throw new Error("Ошибка при скачивании файла")
       }
-
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
@@ -708,9 +762,9 @@ export default function TranscriptionResult({
       <Card className="mb-6 shadow-md hover:shadow-lg transition-all duration-300">
         <CardHeader className="pb-3">
           <CardTitle>Результат транскрипции</CardTitle>
-          {editableTranscription && (
+          {formattedTranscription && (
             <CardDescription>
-              {editableTranscription.split(" ").length} слов, {editableTranscription.length} символов
+              {formattedTranscription.split(" ").length} слов, {formattedTranscription.length} символов
               {duration > 0 && `, длительность: ${formatTime(duration)}`}
             </CardDescription>
           )}
@@ -762,7 +816,7 @@ export default function TranscriptionResult({
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row items-center gap-3 mb-4">
             <GeminiTextProcessor
-              transcriptionText={editableTranscription}
+              transcriptionText={formattedTranscription}
               onProcessedTextChange={handleProcessedTextChange}
             />
           </div>
@@ -781,38 +835,25 @@ export default function TranscriptionResult({
           <Tabs defaultValue="edit" className="w-full">
             <TabsList className="mb-3">
               <TabsTrigger value="edit">Редактировать</TabsTrigger>
-              <TabsTrigger value="preview">Предпросмотр</TabsTrigger>
               {hasWords && <TabsTrigger value="interactive">Интерактивно</TabsTrigger>}
             </TabsList>
+            
             <TabsContent value="edit">
-              <Textarea
-                value={editableTranscription}
-                onChange={handleTranscriptionChange}
-                className="min-h-[300px] resize-y font-medium"
-                placeholder="Здесь будет отображен текст транскрипции..."
+              <TranscriptionEditor 
+                ref={transcriptionEditorRef}
+                transcriptionData={transcriptionData} 
+                onTranscriptionChange={(text) => {
+                  // Обновляем текст только при явном сохранении изменений в редакторе
+                  setEditableTranscription(text);
+                  setFormattedTranscription(text);
+                  if (onTranscriptionChange) {
+                    onTranscriptionChange(text);
+                  }
+                }}
+                formattedText={editableTranscription}
               />
             </TabsContent>
-            <TabsContent value="preview">
-              <div className="border rounded-md p-4 min-h-[300px] prose prose-zinc max-w-none">
-                {getParagraphsWithMetadata().map((paragraph, index) => (
-                  <div key={index} className="paragraph-container">
-                    {paragraph.start > 0 && (
-                      <span className="paragraph-time" title="Временной диапазон параграфа">
-                        {formatTime(paragraph.start)} - {formatTime(paragraph.end)}
-                      </span>
-                    )}
-                    <p>
-                      {paragraph.text.split('\n').map((line, lineIndex) => (
-                        <React.Fragment key={lineIndex}>
-                          {line}
-                          {lineIndex < paragraph.text.split('\n').length - 1 && <br />}
-                        </React.Fragment>
-                      ))}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </TabsContent>
+            
             {hasWords && (
               <TabsContent value="interactive" className="w-full">
                 <div className="border rounded-md p-4 min-h-[400px] overflow-y-auto prose prose-zinc max-w-none interactive-text-container">
@@ -868,7 +909,7 @@ export default function TranscriptionResult({
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" size="sm" onClick={handleCopyToClipboard} className="flex items-center gap-1">
               {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              {copied ? "Скопировано" : "Копировать"}
+              {copied ? "Скопировано" : "Копировать текст из редактора"}
             </Button>
           </div>
         </CardContent>
@@ -881,7 +922,7 @@ export default function TranscriptionResult({
               className="flex-1 sm:flex-none hover:bg-primary/5 transition-colors duration-300"
             >
               <FileDown className="mr-2 h-4 w-4" />
-              Скачать в DOCX
+              Скачать в DOCX из редактора
             </Button>
             <Button
               variant="outline"
@@ -889,7 +930,7 @@ export default function TranscriptionResult({
               className="flex-1 sm:flex-none hover:bg-primary/5 transition-colors duration-300"
             >
               <FileDown className="mr-2 h-4 w-4" />
-              Скачать в ODT
+              Скачать в ODT из редактора
             </Button>
           </div>
         </CardFooter>
