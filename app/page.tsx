@@ -8,16 +8,24 @@ import { motion } from "framer-motion";
 
 export default function Home() {
   const [transcription, setTranscription] = useState('');
+  const [transcriptionData, setTranscriptionData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [transcriptionData, setTranscriptionData] = useState<{ text: string } | null>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [hasTranscription, setHasTranscription] = useState(false);
 
-  const handleTranscriptionResult = (data: { text: string } | null) => {
-    if (data && typeof data === 'object' && data.text) {
-      setTranscription(data.text);
-      setTranscriptionData(data);
-    } else {
-      setError('Получены некорректные данные транскрипции');
+  const handleTranscriptionComplete = (data: any) => {
+    setTranscription(data.text || '');
+    setTranscriptionData(data);
+    setHasTranscription(true);
+  };
+
+  const handleFileChange = (file: File | null) => {
+    setAudioFile(file);
+    if (!file) {
+      setHasTranscription(false);
+      setTranscription('');
+      setTranscriptionData(null);
     }
   };
 
@@ -27,14 +35,14 @@ export default function Home() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="container max-w-6xl mx-auto px-4 py-12"
+        className="container max-w-6xl mx-auto px-4 py-8"
       >
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <motion.h1 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.8 }}
-            className="text-4xl md:text-5xl font-bold tracking-tight mb-3"
+            className="text-3xl md:text-4xl font-bold tracking-tight mb-2"
           >
             Транскрипция и обработка аудио/видео
           </motion.h1>
@@ -44,33 +52,51 @@ export default function Home() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.5 }}
-          className="bg-card rounded-xl shadow-lg border p-1"
+          className="bg-card rounded-xl shadow-lg border"
         >
           <Tabs defaultValue="transcription" className="w-full">
-            <TabsList className="grid w-full grid-cols-1 h-auto p-1 mb-4">
-              <TabsTrigger value="transcription" className="text-lg py-3">
+            <TabsList className="grid w-full grid-cols-1 h-auto p-1">
+              <TabsTrigger value="transcription" className="text-lg py-2">
                 Транскрипция
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="transcription" className="space-y-6 p-6">
-              <div className="grid md:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                  <TranscriptionForm
-                    onTranscriptionComplete={handleTranscriptionResult}
-                    setIsLoading={setIsLoading}
-                    setError={setError}
-                  />
+            <TabsContent value="transcription" className="p-4">
+              {!hasTranscription ? (
+                <div className="grid md:grid-cols-2 gap-6 p-2">
+                  <div className="rounded-xl overflow-hidden">
+                    <TranscriptionForm
+                      onTranscriptionComplete={handleTranscriptionComplete}
+                      setIsLoading={setIsLoading}
+                      setError={setError}
+                      onFileChange={handleFileChange}
+                    />
+                  </div>
+                  <div className="flex items-center justify-center rounded-xl border border-dashed p-8 text-muted-foreground">
+                    <p className="text-center">Ожидание файла для транскрипции</p>
+                  </div>
                 </div>
-                <div className="md:border-l pl-0 md:pl-8 pt-8 md:pt-0">
-                  <TranscriptionResult
-                    transcription={transcription}
-                    transcriptionData={transcriptionData}
-                    isLoading={isLoading}
-                    error={error}
-                    onTranscriptionChange={(text) => setTranscription(text)}
-                  />
+              ) : (
+                <div className="flex flex-col space-y-4">
+                  <div className="w-full rounded-xl overflow-hidden">
+                    <TranscriptionForm
+                      onTranscriptionComplete={handleTranscriptionComplete}
+                      setIsLoading={setIsLoading}
+                      setError={setError}
+                      onFileChange={handleFileChange}
+                    />
+                  </div>
+                  <div className="w-full mt-2">
+                    <TranscriptionResult
+                      transcription={transcription}
+                      transcriptionData={transcriptionData}
+                      isLoading={isLoading}
+                      error={error}
+                      originalAudioFile={audioFile}
+                      onTranscriptionChange={(newText) => setTranscription(newText)}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </TabsContent>
           </Tabs>
         </motion.div>

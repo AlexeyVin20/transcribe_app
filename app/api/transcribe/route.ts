@@ -117,25 +117,24 @@ export async function POST(request: NextRequest) {
     }
 
     const deepgram = createClient(process.env.DEEPGRAM_API_KEY);
-    const options: TranscriptionOptions = {
-      language: 'ru',
-      smart_format: true,
-      punctuate: true,
-      paragraphs: true,
-      diarize: true,
-      utterances: true,
-      words: needTimestamps,
-      model: model === 'nova-2' ? 'nova-2' : (model === 'whisper' ? 'whisper' : 'nova-3')
-    };
-
-    console.log('[INFO] Параметры транскрипции:', options);
+    
+    console.log('[INFO] Модель транскрипции:', model);
     
     // Безопасный вызов API с обработкой ошибок
     let result, error;
     try {
       const transcriptionResponse = await deepgram.listen.prerecorded.transcribeFile(
         buffer,
-        options
+        {
+          model: 'nova-3',
+          language: 'multi',
+          smart_format: true,
+          punctuate: true,
+          paragraphs: true,
+          diarize: true,
+          utterances: false,
+          words: needTimestamps
+        }
       );
       result = transcriptionResponse.result;
       error = transcriptionResponse.error;
