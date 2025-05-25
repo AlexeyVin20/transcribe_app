@@ -42,6 +42,73 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --animate-rainbow: rainbow var(--speed, 2s) infinite linear;
+  --color-color-5: var(----color-5);
+  --color-color-4: var(----color-4);
+  --color-color-3: var(----color-3);
+  --color-color-2: var(----color-2);
+  --color-color-1: var(----color-1);
+
+  @keyframes rainbow {
+    0% {
+      background-position: 0%;
+    }
+    100% {
+      background-position: 200%;
+    }
+  }
+  @keyframes rainbow {
+  0% {
+    background-position: 0%;
+    }
+  100% {
+    background-position: 200%;
+    }
+  }
+  --animate-star-movement-bottom: star-movement-bottom linear infinite alternate;
+  --animate-star-movement-top: star-movement-top linear infinite alternate;
+
+  @keyframes star-movement-bottom {
+    0% {
+      transform: translate(0%, 0%);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(-100%, 0%);
+      opacity: 0;
+    }
+  }
+
+  @keyframes star-movement-top {
+    0% {
+      transform: translate(0%, 0%);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(100%, 0%);
+      opacity: 0;
+    }
+  }
+  @keyframes star-movement-bottom {
+  0% {
+    transform: translate(0%, 0%);
+    opacity: 1;
+    }
+  100% {
+    transform: translate(-100%, 0%);
+    opacity: 0;
+    }
+  }
+  @keyframes star-movement-top {
+  0% {
+    transform: translate(0%, 0%);
+    opacity: 1;
+    }
+  100% {
+    transform: translate(100%, 0%);
+    opacity: 0;
+    }
+  }
 }
 
 :root {
@@ -78,6 +145,11 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --color-1: hsl(0 100% 63%);
+  --color-2: hsl(270 100% 63%);
+  --color-3: hsl(210 100% 63%);
+  --color-4: hsl(195 100% 63%);
+  --color-5: hsl(90 100% 63%);
 }
 
 .dark {
@@ -169,4 +241,9 @@
 .prose p {
   margin-top: 1.25em;
   margin-bottom: 1.25em;
+}
+
+.animate-rainbow {
+  animation: var(--animate-rainbow, rainbow 2s linear infinite);
+  background-size: 200%;
 }

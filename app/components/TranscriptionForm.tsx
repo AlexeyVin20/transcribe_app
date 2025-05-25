@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { FileAudio, Upload, AlertCircle, X, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { Spinner } from "@/components/ui/Spinner";
+import { GlowEffect } from '@/components/ui/glow-effect';
+import { StarBorder } from "@/components/ui/star-border";
 
 interface TranscriptionFormProps {
   onTranscriptionComplete: (data: any) => void;
@@ -131,7 +133,15 @@ export default function TranscriptionForm({
       <Card className="w-full border">
         <CardContent className="py-3">
           <form onSubmit={handleSubmit}>
-            <div className="flex items-center justify-between">
+            <div className="relative flex items-center justify-between">
+              {isProcessing && (
+                <GlowEffect
+                  colors={['hsl(var(--primary))']}
+                  mode="pulse"
+                  blur="medium"
+                  duration={2}
+                />
+              )}
               <div className="flex items-center mr-2 overflow-hidden">
                 <FileAudio className="w-5 h-5 mr-2 text-primary flex-shrink-0" />
                 <div className="text-sm overflow-hidden">
@@ -195,7 +205,7 @@ export default function TranscriptionForm({
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div
-            className={`border-2 border-dashed rounded-lg p-6 text-center hover:bg-secondary/20 transition-colors cursor-pointer ${
+            className={`relative border-2 border-dashed rounded-lg p-6 text-center hover:bg-secondary/20 transition-colors cursor-pointer ${
               dragActive ? 'border-primary bg-primary/5' : 'border-gray-300'
             }`}
             onDragEnter={handleDrag}
@@ -204,6 +214,14 @@ export default function TranscriptionForm({
             onDrop={handleDrop}
             onClick={() => document.getElementById('file-upload')?.click()}
           >
+            {dragActive && (
+              <GlowEffect
+                colors={['hsl(var(--primary))']}
+                mode="pulse"
+                blur="medium"
+                duration={2}
+              />
+            )}
             <input
               id="file-upload"
               name="file"
@@ -223,10 +241,13 @@ export default function TranscriptionForm({
             </div>
           </div>
 
-          <Button 
+          <StarBorder 
             type="submit" 
             className="w-full" 
             disabled={!file || isProcessing}
+            background="bg-black"
+            textColor="text-white"
+            borderColor="border-blue-500"
           >
             {isProcessing ? (
               <>
@@ -239,7 +260,7 @@ export default function TranscriptionForm({
                 Транскрибировать
               </>
             )}
-          </Button>
+          </StarBorder>
         </form>
       </CardContent>
     </Card>

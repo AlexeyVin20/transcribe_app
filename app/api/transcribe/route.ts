@@ -182,7 +182,18 @@ export async function POST(request: NextRequest) {
     const response = {
       text: alternative.transcript || '',
       ...(needTimestamps && alternative.words ? { words: alternative.words } : {}),
-      ...(alternative.paragraphs ? { paragraphs: alternative.paragraphs.paragraphs } : {})
+      ...(alternative.paragraphs ? { paragraphs: alternative.paragraphs.paragraphs } : {}),
+      metadata: {
+        duration: (() => {
+          if (alternative.words && alternative.words.length > 0) {
+            return alternative.words[alternative.words.length - 1].end;
+          }
+          if (alternative.paragraphs && alternative.paragraphs.paragraphs && alternative.paragraphs.paragraphs.length > 0) {
+            return alternative.paragraphs.paragraphs[alternative.paragraphs.paragraphs.length - 1].end;
+          }
+          return null;
+        })()
+      }
     };
 
     console.log('[INFO] Успешная транскрипция, текст длиной:', response.text.length);

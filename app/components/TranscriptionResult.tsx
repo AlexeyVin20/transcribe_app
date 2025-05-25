@@ -9,7 +9,8 @@ import GeminiTextProcessor from "./GeminiTextProcessor"
 import { FileDown, FileText, Copy, Check, AlertCircle, Play, Pause } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { motion } from "framer-motion"
-import { Slider } from "@/app/components/ui/slider"
+import { Slider } from "@/components/ui/slider"
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import TranscriptionEditor, { TranscriptionEditorRef } from "./TranscriptionEditor"
 
 // Add keyframes for the pulse animation
@@ -484,6 +485,13 @@ export default function TranscriptionResult({
       audioRef.current.currentTime = newTime
       setCurrentTime(newTime)
       
+      // Останавливаем воспроизведение, если дошли до конца
+      if (newTime >= duration) {
+        setIsPlaying(false)
+        audioRef.current.pause()
+        setActiveWordIndex(-1)
+      }
+      
       // Находим слово, соответствующее новой позиции
       const newActiveWord = wordsRef.current.findIndex(
         (word) => newTime >= word.start && newTime <= word.end,
@@ -777,7 +785,7 @@ export default function TranscriptionResult({
                 <Button size="icon" variant="outline" onClick={togglePlayPause} className="h-8 w-8">
                   {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                 </Button>
-                <div className="w-full flex-1">
+                <div className="w-full flex-1 min-w-0 flex items-center">
                   <Slider
                     value={[currentTime]}
                     min={0}
@@ -786,7 +794,9 @@ export default function TranscriptionResult({
                     onValueChange={handleSliderChange}
                     onValueCommit={handleSliderDragEnd}
                     onPointerDown={handleSliderDragStart}
-                    className="cursor-pointer"
+                    className="cursor-pointer w-full"
+                    showTooltip={true}
+                    tooltipContent={(value) => formatTime(value)}
                   />
                 </div>
                 <span className="text-xs whitespace-nowrap">
@@ -809,6 +819,16 @@ export default function TranscriptionResult({
                   </span>
                 )}
               </div>
+            </div>
+            <div className="flex justify-between mt-1 px-2 select-none">
+              {Array.from({ length: 6 }).map((_, i, arr) => {
+                const t = Math.round((i * duration) / (arr.length - 1));
+                return (
+                  <span key={i} className="text-[10px] font-mono text-muted-foreground" style={{ minWidth: 24, textAlign: 'center' }}>
+                    {formatTime(t)}
+                  </span>
+                );
+              })}
             </div>
           </CardContent>
         )}

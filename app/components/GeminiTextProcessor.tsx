@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Button } from "@/components/ui/button";
+import { StarBorder } from "@/components/ui/star-border";
 import { Spinner } from "@/components/ui/Spinner";
 import { toast } from "sonner";
 import { Sparkles } from "lucide-react";
@@ -130,20 +130,23 @@ export default function GeminiTextProcessor({
       transition={{ type: "spring", stiffness: 400, damping: 10 }}
       className="w-full sm:w-auto"
     >
-      <Button 
-        onClick={processText} 
-        disabled={isProcessing || !transcriptionText} 
-        variant="default"
+      <StarBorder
+        onClick={processText}
+        disabled={isProcessing || !transcriptionText}
         className="relative overflow-hidden group w-full"
+        background="bg-black"
+        textColor="text-white"
+        borderColor="border-blue-700"
       >
-        {isProcessing ? (
-          <Spinner className="mr-2" size="sm" />
-        ) : (
-          <Sparkles className="mr-2 h-4 w-4 text-primary-foreground" />
-        )}
-        <span>Обработать текст с помощью ИИ</span>
-        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-primary/0 via-primary-foreground/20 to-primary/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 -translate-x-full group-hover:translate-x-full ease-in-out"></div>
-      </Button>
+        <div className="flex flex-row items-center justify-center">
+          {isProcessing ? (
+            <Spinner className="mr-2" size="md" />
+          ) : (
+            <Sparkles className="mr-2 h-4 w-4 text-primary-foreground" />
+          )}
+          <span>Обработать с помощью ИИ</span>
+        </div>
+      </StarBorder>
     </motion.div>
   );
 }
