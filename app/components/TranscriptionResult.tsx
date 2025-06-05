@@ -98,13 +98,24 @@ export default function TranscriptionResult({
 
   // Модифицируем основной useEffect для использования новой функции
   useEffect(() => {
-    // Только при первом рендере или при явной смене файла (transcription)
-    if (isFirstRender.current || prevTranscriptionRef.current !== transcription) {
-      setEditableTranscription(transcription);
+    const savedTranscription = sessionStorage.getItem('transcriptionSessionText');
+
+    if (savedTranscription) {
+      setEditableTranscription(savedTranscription);
+      setFormattedTranscription(savedTranscription);
+      setHasBeenEdited(true);
+      prevTranscriptionRef.current = savedTranscription;
       isFirstRender.current = false;
-      prevTranscriptionRef.current = transcription;
-      // Сбрасываем флаг редактирования при смене файла
+    } else if (isFirstRender.current || prevTranscriptionRef.current !== transcription) {
+      // Загружаем из props, только если в sessionStorage пусто И (это первый рендер ИЛИ изменился prop transcription)
+      setEditableTranscription(transcription);
+      // formattedTranscription установится через formatTranscriptionWithParagraphs(), который вызывается ниже в этом useEffect,
+      // или через useEffect, который следит за editableTranscription, если hasBeenEdited=true.
+      // Но для инициализации из props, лучше явно установить и его, если он не будет обработан немедленно.
+      // Однако, formatTranscriptionWithParagraphs() вызывается в любом случае далее, так что это должно быть ОК.
       setHasBeenEdited(false);
+      prevTranscriptionRef.current = transcription;
+      isFirstRender.current = false;
     }
 
     // Извлекаем слова из данных транскрипции если они есть
@@ -210,7 +221,9 @@ export default function TranscriptionResult({
   // Функция для форматирования транскрипции с параграфами
   const formatTranscriptionWithParagraphs = () => {
     if (!wordsRef.current || wordsRef.current.length === 0) {
-      setFormattedTranscription(transcription);
+      // editableTranscription содержит текст из sessionStorage или изначальных props.
+      // Если нет данных о словах для форматирования, formattedTranscription должен ему соответствовать.
+      setFormattedTranscription(editableTranscription);
       return;
     }
     
@@ -382,8 +395,9 @@ export default function TranscriptionResult({
     setEditableTranscription(text);
     setSummary(summary);
     
-    // Обновляем форматированную транскрипцию 
+    // Обновляем форматированную транскрипцию и сохраняем в sessionStorage
     setFormattedTranscription(text);
+    sessionStorage.setItem('transcriptionSessionText', text);
     
     // Обновляем редактор с помощью разбиения текста на параграфы
     if (transcriptionEditorRef.current) {
@@ -866,6 +880,7 @@ export default function TranscriptionResult({
                   // Обновляем текст только при явном сохранении изменений в редакторе
                   setEditableTranscription(text);
                   setFormattedTranscription(text);
+                  sessionStorage.setItem('transcriptionSessionText', text);
                   if (onTranscriptionChange) {
                     onTranscriptionChange(text);
                   }

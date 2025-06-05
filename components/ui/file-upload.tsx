@@ -51,7 +51,9 @@ export const FileUpload = ({
     },
     accept: {
       'audio/*': [],
-      'video/*': []
+      'video/*': [],
+      '.mxf': [],
+      '.mts': []
     },
   });
 
@@ -68,7 +70,7 @@ export const FileUpload = ({
           type="file"
           onChange={(e) => handleFileChange(Array.from(e.target.files || []))}
           className="hidden"
-          accept="audio/*,video/*"
+          accept="audio/*,video/*,.mxf,.mts"
         />
         <div className="absolute inset-0 [mask-image:radial-gradient(ellipse_at_center,white,transparent)]">
           <GridPattern />

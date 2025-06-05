@@ -225,7 +225,20 @@ export default function Home() {
                     )}
                   </div>
                   <div className="flex items-center justify-center rounded-xl border border-dashed p-8 text-muted-foreground">
-                    <p className="text-center">Ожидание файла для транскрипции</p>
+                    {isLoading ? (
+                      <div className="flex flex-col items-center justify-center w-full">
+                        <Spinner size="lg" className="mb-3 text-primary" />
+                        <span className="text-base font-medium text-primary">Файл обрабатывается...<br/>Пожалуйста, подождите</span>
+                        {audioFile && (audioFile.name.toLowerCase().endsWith('.mxf') || audioFile.name.toLowerCase().endsWith('.mts')) && (
+                          <div className="mt-3 text-sm text-amber-500 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-md">
+                            <p className="font-medium">Идёт конвертация {audioFile.name.toLowerCase().endsWith('.mxf') ? 'MXF' : 'MTS'} файла в MP3</p>
+                            <p>Это может занять дополнительное время</p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-center">Ожидание файла для транскрипции</p>
+                    )}
                   </div>
                 </div>
               ) : (

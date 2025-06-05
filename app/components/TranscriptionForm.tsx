@@ -187,6 +187,12 @@ export default function TranscriptionForm({
                 </Button>
               </div>
             </div>
+            {isProcessing && (
+              <div className="mt-4 text-sm text-muted-foreground flex items-center justify-center py-2">
+                <Spinner className="w-4 h-4 mr-2" size="sm" />
+                <span>Файл обрабатывается (может включать конвертацию). Это может занять некоторое время...</span>
+              </div>
+            )}
           </form>
         </CardContent>
       </Card>
@@ -227,7 +233,7 @@ export default function TranscriptionForm({
               name="file"
               type="file"
               className="hidden"
-              accept=".mp3,.wav,.mp4,.flac,.ogg,.webm,audio/*,video/*"
+              accept=".mp3,.wav,.mp4,.flac,.ogg,.webm,.mxf,.mts,audio/*,video/*"
               onChange={handleFileChange}
             />
             <div className="flex flex-col items-center justify-center">
@@ -236,7 +242,7 @@ export default function TranscriptionForm({
                 Выберите файл или перетащите его сюда
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                Поддерживаются аудио и видео форматы (MP3, MP4, WAV, FLAC, и другие)
+                Поддерживаются аудио и видео форматы (MP3, MP4, WAV, FLAC, MXF, MTS и другие)
               </p>
             </div>
           </div>
